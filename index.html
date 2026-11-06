@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OP-NODE-01 // Field Intelligence & Daily Brief Telemetry</title>
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --surface-color: #161616;
+            --border-color: #2a2a2a;
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --accent: #ffffff;
+            --font-mono: 'SF Mono', Consolas, Monaco, monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            padding: 20px;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .lab-title { font-size: 11px; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
+        .node-title { font-size: 18px; font-weight: 600; letter-spacing: 1px; color: var(--accent); }
+        .status-badge { font-size: 10px; padding: 4px 8px; border: 1px solid var(--border-color); background: var(--surface-color); }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .card-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; display: flex; justify-content: space-between; }
+        .data-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+        .data-label { color: var(--text-muted); }
+        .data-val { color: var(--accent); text-align: right; }
+
+        .full-width { grid-column: 1 / -1; }
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        button {
+            background: var(--surface-color);
+            color: var(--accent);
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        button:hover { background: var(--border-color); }
+        
+        .matrix-stream { font-size: 12px; line-height: 1.5; color: var(--text-main); max-height: 350px; overflow-y: auto; }
+        .matrix-item { padding: 10px 0; border-bottom: 1px dashed var(--border-color); }
+        .matrix-item:last-child { border-bottom: none; }
+        .matrix-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .pillar-tag { font-size: 10px; padding: 2px 6px; border: 1px solid var(--border-color); color: var(--accent); background: #000; }
+        .timestamp { color: var(--text-muted); font-size: 10px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <div class="lab-title">Matthews Operations Lab // Field Utility</div>
+            <div class="node-title">OP-NODE-01 // Matrix Telemetry</div>
+        </div>
+        <div id="conn-status" class="status-badge">ONLINE-FIRST READY</div>
+    </header>
+
+    <div class="action-bar">
+        <button onclick="refreshNode()">Sync Field & Matrix Telemetry</button>
+        <button onclick="window.open('https://starfirelockanddoorbackup-byte.github.io/dailyintelbrief', '_blank')">Launch Full Daily Brief</button>
+        <button onclick="exportNodeData()">Export Session JSON</button>
+    </div>
+
+    <div class="grid">
+        <!-- Local Device & Geo -->
+        <div class="card">
+            <div class="card-title"><span>Local Positioning</span><span>NODE-01</span></div>
+            <div class="data-row"><span class="data-label">Public IP:</span><span id="ip-val" class="data-val">Scanning...</span></div>
+            <div class="data-row"><span class="data-label">Latitude:</span><span id="lat-val" class="data-val">Acquiring...</span></div>
+            <div class="data-row"><span class="data-label">Longitude:</span><span id="lon-val" class="data-val">Acquiring...</span></div>
+            <div class="data-row"><span class="data-label">System Time:</span><span id="time-val" class="data-val">--:--:--</span></div>
+        </div>
+
+        <!-- Environmental & Advisories -->
+        <div class="card">
+            <div class="card-title"><span>Environmental State</span><span>LOCAL</span></div>
+            <div class="data-row"><span class="data-label">Weather:</span><span id="weather-val" class="data-val">84°F // Nominal</span></div>
+            <div class="data-row"><span class="data-label">Hazard Alert:</span><span id="hazard-val" class="data-val">None Reported</span></div>
+            <div class="data-row"><span class="data-label">Network Protocol:</span><span id="net-state" class="data-val">HTTPS / Air-Gap Safe</span></div>
+        </div>
+
+        <!-- Daily Brief Matrix Stream -->
+        <div class="card full-width">
+            <div class="card-title"><span>Strategic Intel Matrix Ingestion (Daily Brief Alignment)</span><span>LIVE WIRES</span></div>
+            <div id="matrix-stream" class="matrix-stream">
+                <div class="matrix-item">
+                    <div class="matrix-header"><span class="pillar-tag">SYS_INIT</span><span class="timestamp">--:--:--</span></div>
+                    <div>Awaiting telemetry synchronization with regional matrix feeds...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            document.getElementById('time-val').innerText = new Date().toUTCString().slice(17, 25) + " UTC";
+        }
+        setInterval(updateClock, 1000);
+
+        async function fetchIP() {
+            try {
+                let res = await fetch('https://api.ipify.org?format=json');
+                let data = await res.json();
+                document.getElementById('ip-val').innerText = data.ip;
+            } catch(e) {
+                document.getElementById('ip-val').innerText = 'Restricted / Air-Gapped';
+            }
+        }
+
+        function fetchGeo() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        document.getElementById('lat-val').innerText = pos.coords.latitude.toFixed(4);
+                        document.getElementById('lon-val').innerText = pos.coords.longitude.toFixed(4);
+                    },
+                    err => {
+                        document.getElementById('lat-val').innerText = 'GPS Restricted';
+                        document.getElementById('lon-val').innerText = 'GPS Restricted';
+                    },
+                    { timeout: 4000 }
+                );
+            } else {
+                document.getElementById('lat-val').innerText = 'Not Supported';
+                document.getElementById('lon-val').innerText = 'Not Supported';
+            }
+        }
+
+        function loadMatrixFeeds() {
+            const stream = document.getElementById('matrix-stream');
+            
+            // Structured matrix telemetry items mimicking the Daily Strategic Intel Brief pillars
+            const matrixItems = [
+                {
+                    pillar: "PILLAR 01 // CONFLICT & FORCE POSTURE",
+                    text: "Active monitoring of regional force posture shifts, maritime choke point transit volumes, and strategic asset relocations.",
+                    time: "06:00 UTC Briefing Baseline"
+                },
+                {
+                    pillar: "PILLAR 02 // ENERGY & LOGISTICS",
+                    text: "Substation baseline telemetry normal; industrial power grid frequency stable across primary regional nodes; supply chain friction nominal.",
+                    time: "06:00 UTC Briefing Baseline"
+                },
+                {
+                    pillar: "PILLAR 03 // CYBER & TECH ANOMALIES",
+                    text: "Zero critical intrusion spikes reported on local watch-desk interfaces; routine perimeter telemetry probes logged and isolated.",
+                    time: "06:00 UTC Briefing Baseline"
+                },
+                {
+                    pillar: "PILLAR 04 // HUMANITARIAN & INFRASTRUCTURE",
+                    text: "Municipal water treatment stoichiometry and backup microgrid load parameters operating within verified tolerance bands.",
+                    time: "06:00 UTC Briefing Baseline"
+                }
+            ];
+
+            stream.innerHTML = matrixItems.map(item => `
+                <div class="matrix-item">
+                    <div class="matrix-header">
+                        <span class="pillar-tag">${item.pillar}</span>
+                        <span class="timestamp">${item.time}</span>
+                    </div>
+                    <div>${item.text}</div>
+                </div>
+            `).join('');
+        }
+
+        function refreshNode() {
+            document.getElementById('conn-status').innerText = 'SYNCING MATRIX...';
+            document.getElementById('conn-status').style.color = '#ffcc00';
+            
+            fetchIP();
+            fetchGeo();
+            loadMatrixFeeds();
+
+            setTimeout(() => {
+                document.getElementById('conn-status').innerText = 'MATRIX SYNCHRONIZED';
+                document.getElementById('conn-status').style.color = '#00ff66';
+            }, 800);
+        }
+
+        function exportNodeData() {
+            const nodeData = {
+                timestamp: new Date().toISOString(),
+                node_id: "OP-NODE-01",
+                ip: document.getElementById('ip-val').innerText,
+                lat: document.getElementById('lat-val').innerText,
+                lon: document.getElementById('lon-val').innerText,
+                status: "Nominal"
+            };
+            const blob = new Blob([JSON.stringify(nodeData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `op-node-matrix-${Date.now()}.json`;
+            a.click();
+        }
+
+        // Initial boot
+        refreshNode();
+    </script>
+</body>
+</html>
